@@ -1,0 +1,293 @@
+{
+  "ruleVersion": "1.0.0",
+  "datasets": [
+    {
+      "seed": 20260901,
+      "examples": 1500,
+      "legitimate": 1000,
+      "artificial": 500,
+      "falsePositives": 9,
+      "falsePositiveRate": 0.009,
+      "truePositives": 350,
+      "artificialDetectionRate": 0.7,
+      "legitimateInconclusive": 0,
+      "artificialInconclusive": 96,
+      "families": {
+        "crescimento_gradual": {
+          "examples": 200,
+          "suspicious": 0,
+          "inconclusive": 0,
+          "noSuspiciousSignals": 200,
+          "falsePositives": 0,
+          "missedArtificial": 0
+        },
+        "viralizacao_explosiva": {
+          "examples": 200,
+          "suspicious": 0,
+          "inconclusive": 0,
+          "noSuspiciousSignals": 200,
+          "falsePositives": 0,
+          "missedArtificial": 0
+        },
+        "ondas_organicas": {
+          "examples": 200,
+          "suspicious": 0,
+          "inconclusive": 0,
+          "noSuspiciousSignals": 200,
+          "falsePositives": 0,
+          "missedArtificial": 0
+        },
+        "divulgacao_externa": {
+          "examples": 167,
+          "suspicious": 0,
+          "inconclusive": 0,
+          "noSuspiciousSignals": 167,
+          "falsePositives": 0,
+          "missedArtificial": 0
+        },
+        "campanha_autorizada_regular": {
+          "examples": 33,
+          "suspicious": 9,
+          "inconclusive": 0,
+          "noSuspiciousSignals": 24,
+          "falsePositives": 9,
+          "missedArtificial": 0
+        },
+        "baixo_volume_irregular": {
+          "examples": 200,
+          "suspicious": 0,
+          "inconclusive": 0,
+          "noSuspiciousSignals": 200,
+          "falsePositives": 0,
+          "missedArtificial": 0
+        },
+        "bloco_mecanico": {
+          "examples": 200,
+          "suspicious": 200,
+          "inconclusive": 0,
+          "noSuspiciousSignals": 0,
+          "falsePositives": 0,
+          "missedArtificial": 0
+        },
+        "pulsos_repetidos": {
+          "examples": 150,
+          "suspicious": 150,
+          "inconclusive": 0,
+          "noSuspiciousSignals": 0,
+          "falsePositives": 0,
+          "missedArtificial": 0
+        },
+        "pico_isolado": {
+          "examples": 100,
+          "suspicious": 0,
+          "inconclusive": 96,
+          "noSuspiciousSignals": 4,
+          "falsePositives": 0,
+          "missedArtificial": 100
+        },
+        "crescimento_disfarcado": {
+          "examples": 50,
+          "suspicious": 0,
+          "inconclusive": 0,
+          "noSuspiciousSignals": 50,
+          "falsePositives": 0,
+          "missedArtificial": 50
+        }
+      },
+      "ambiguousCases": {
+        "total": 1,
+        "abstained": 1
+      },
+      "errorExamples": {
+        "falsePositives": [
+          {
+            "id": "legitimate-campanha_autorizada_regular-008",
+            "family": "campanha_autorizada_regular"
+          },
+          {
+            "id": "legitimate-campanha_autorizada_regular-028",
+            "family": "campanha_autorizada_regular"
+          },
+          {
+            "id": "legitimate-campanha_autorizada_regular-035",
+            "family": "campanha_autorizada_regular"
+          },
+          {
+            "id": "legitimate-campanha_autorizada_regular-042",
+            "family": "campanha_autorizada_regular"
+          },
+          {
+            "id": "legitimate-campanha_autorizada_regular-045",
+            "family": "campanha_autorizada_regular"
+          }
+        ],
+        "missedArtificial": [
+          {
+            "id": "artificial-pico_isolado-001",
+            "family": "pico_isolado"
+          },
+          {
+            "id": "artificial-pico_isolado-002",
+            "family": "pico_isolado"
+          },
+          {
+            "id": "artificial-pico_isolado-003",
+            "family": "pico_isolado"
+          },
+          {
+            "id": "artificial-pico_isolado-004",
+            "family": "pico_isolado"
+          },
+          {
+            "id": "artificial-pico_isolado-005",
+            "family": "pico_isolado"
+          }
+        ]
+      }
+    },
+    {
+      "seed": 20261009,
+      "examples": 1500,
+      "legitimate": 1000,
+      "artificial": 500,
+      "falsePositives": 14,
+      "falsePositiveRate": 0.014,
+      "truePositives": 350,
+      "artificialDetectionRate": 0.7,
+      "legitimateInconclusive": 0,
+      "artificialInconclusive": 96,
+      "families": {
+        "crescimento_gradual": {
+          "examples": 200,
+          "suspicious": 0,
+          "inconclusive": 0,
+          "noSuspiciousSignals": 200,
+          "falsePositives": 0,
+          "missedArtificial": 0
+        },
+        "viralizacao_explosiva": {
+          "examples": 200,
+          "suspicious": 0,
+          "inconclusive": 0,
+          "noSuspiciousSignals": 200,
+          "falsePositives": 0,
+          "missedArtificial": 0
+        },
+        "ondas_organicas": {
+          "examples": 200,
+          "suspicious": 0,
+          "inconclusive": 0,
+          "noSuspiciousSignals": 200,
+          "falsePositives": 0,
+          "missedArtificial": 0
+        },
+        "divulgacao_externa": {
+          "examples": 165,
+          "suspicious": 0,
+          "inconclusive": 0,
+          "noSuspiciousSignals": 165,
+          "falsePositives": 0,
+          "missedArtificial": 0
+        },
+        "campanha_autorizada_regular": {
+          "examples": 35,
+          "suspicious": 14,
+          "inconclusive": 0,
+          "noSuspiciousSignals": 21,
+          "falsePositives": 14,
+          "missedArtificial": 0
+        },
+        "baixo_volume_irregular": {
+          "examples": 200,
+          "suspicious": 0,
+          "inconclusive": 0,
+          "noSuspiciousSignals": 200,
+          "falsePositives": 0,
+          "missedArtificial": 0
+        },
+        "bloco_mecanico": {
+          "examples": 200,
+          "suspicious": 200,
+          "inconclusive": 0,
+          "noSuspiciousSignals": 0,
+          "falsePositives": 0,
+          "missedArtificial": 0
+        },
+        "pulsos_repetidos": {
+          "examples": 150,
+          "suspicious": 150,
+          "inconclusive": 0,
+          "noSuspiciousSignals": 0,
+          "falsePositives": 0,
+          "missedArtificial": 0
+        },
+        "pico_isolado": {
+          "examples": 100,
+          "suspicious": 0,
+          "inconclusive": 96,
+          "noSuspiciousSignals": 4,
+          "falsePositives": 0,
+          "missedArtificial": 100
+        },
+        "crescimento_disfarcado": {
+          "examples": 50,
+          "suspicious": 0,
+          "inconclusive": 0,
+          "noSuspiciousSignals": 50,
+          "falsePositives": 0,
+          "missedArtificial": 50
+        }
+      },
+      "ambiguousCases": {
+        "total": 1,
+        "abstained": 1
+      },
+      "errorExamples": {
+        "falsePositives": [
+          {
+            "id": "legitimate-campanha_autorizada_regular-003",
+            "family": "campanha_autorizada_regular"
+          },
+          {
+            "id": "legitimate-campanha_autorizada_regular-009",
+            "family": "campanha_autorizada_regular"
+          },
+          {
+            "id": "legitimate-campanha_autorizada_regular-013",
+            "family": "campanha_autorizada_regular"
+          },
+          {
+            "id": "legitimate-campanha_autorizada_regular-030",
+            "family": "campanha_autorizada_regular"
+          },
+          {
+            "id": "legitimate-campanha_autorizada_regular-039",
+            "family": "campanha_autorizada_regular"
+          }
+        ],
+        "missedArtificial": [
+          {
+            "id": "artificial-pico_isolado-001",
+            "family": "pico_isolado"
+          },
+          {
+            "id": "artificial-pico_isolado-002",
+            "family": "pico_isolado"
+          },
+          {
+            "id": "artificial-pico_isolado-003",
+            "family": "pico_isolado"
+          },
+          {
+            "id": "artificial-pico_isolado-004",
+            "family": "pico_isolado"
+          },
+          {
+            "id": "artificial-pico_isolado-005",
+            "family": "pico_isolado"
+          }
+        ]
+      }
+    }
+  ]
+}

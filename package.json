@@ -1,0 +1,23 @@
+{
+  "name": "conty-challenge-09-views",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test test/**/*.test.ts",
+    "generate:dataset": "tsx src/scripts/generate-dataset.ts",
+    "evaluate": "tsx src/scripts/evaluate.ts"
+  },
+  "dependencies": {
+    "fastify": "^5.12.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
