@@ -3,6 +3,8 @@ import type { Dataset } from "./dataset/generator.js";
 
 export type FamilyMetrics = {
   examples: number;
+  legitimate: number;
+  artificial: number;
   suspicious: number;
   inconclusive: number;
   noSuspiciousSignals: number;
@@ -35,7 +37,7 @@ export type EvaluationReport = {
 };
 
 function newFamilyMetrics(): FamilyMetrics {
-  return { examples: 0, suspicious: 0, inconclusive: 0, noSuspiciousSignals: 0, falsePositives: 0, missedArtificial: 0 };
+  return { examples: 0, legitimate: 0, artificial: 0, suspicious: 0, inconclusive: 0, noSuspiciousSignals: 0, falsePositives: 0, missedArtificial: 0 };
 }
 
 function incrementPrediction(metrics: FamilyMetrics, classification: Classification): void {
@@ -63,6 +65,7 @@ export function evaluateDataset(dataset: Dataset): DatasetMetrics {
 
     if (example.label === "legitimate") {
       legitimate += 1;
+      family.legitimate += 1;
       if (result.classification === "suspeito") {
         falsePositives += 1;
         family.falsePositives += 1;
@@ -71,6 +74,7 @@ export function evaluateDataset(dataset: Dataset): DatasetMetrics {
       if (result.classification === "inconclusivo") legitimateInconclusive += 1;
     } else {
       artificial += 1;
+      family.artificial += 1;
       if (result.classification === "suspeito") truePositives += 1;
       else {
         family.missedArtificial += 1;
@@ -118,10 +122,13 @@ export function renderReadmeBlock(report: EvaluationReport): string {
 
   const percent = (rate: number): string => `${(rate * 100).toFixed(2)}%`;
   const rows = report.datasets.map((dataset) =>
-    `| ${dataset.seed === 20260901 ? "Desenvolvimento" : "Holdout"} | ${dataset.seed} | ${dataset.examples} | ${dataset.legitimate} | ${dataset.falsePositives} | ${percent(dataset.falsePositiveRate)} | ${dataset.artificial} | ${dataset.truePositives} | ${percent(dataset.artificialDetectionRate)} | ${dataset.legitimateInconclusive} | ${dataset.artificialInconclusive} |`,
+    `| ${dataset.seed === 20260901 ? "Desenvolvimento" : "Holdout"} | ${dataset.seed} | ${dataset.falsePositives}/${dataset.legitimate} | ${percent(dataset.falsePositiveRate)} | ${dataset.truePositives}/${dataset.artificial} | ${percent(dataset.artificialDetectionRate)} |`,
+  );
+  const abstentionRows = report.datasets.map((dataset) =>
+    `| ${dataset.seed === 20260901 ? "Desenvolvimento" : "Holdout"} | ${dataset.legitimateInconclusive}/${dataset.legitimate} (${percent(dataset.legitimateInconclusive / dataset.legitimate)}) | ${dataset.artificialInconclusive}/${dataset.artificial} (${percent(dataset.artificialInconclusive / dataset.artificial)}) | ${dataset.ambiguousCases.abstained}/${dataset.ambiguousCases.total} |`,
   );
   const familyRows = Object.entries(evaluation.families).map(([family, metrics]) =>
-    `| ${family} | ${metrics.examples} | ${metrics.falsePositives} | ${metrics.missedArtificial} | ${metrics.inconclusive} |`,
+    `| ${family} | ${metrics.legitimate > 0 ? "Legítima" : "Artificial"} | ${metrics.examples} | ${metrics.suspicious} | ${metrics.inconclusive} | ${metrics.legitimate > 0 ? percent(metrics.falsePositives / metrics.legitimate) : "—"} | ${metrics.artificial > 0 ? percent((metrics.artificial - metrics.missedArtificial) / metrics.artificial) : "—"} |`,
   );
   const falsePositiveExamples = evaluation.errorExamples.falsePositives.length === 0
     ? "nenhum"
@@ -134,17 +141,22 @@ export function renderReadmeBlock(report: EvaluationReport): string {
     "<!-- EVALUATION:START -->",
     `Regras avaliadas: **${report.ruleVersion}**. Resultado calculado pelo comando \`npm run evaluate\`; as taxas abaixo vêm dos exemplos sintéticos identificados por seed.`,
     "",
-    "| Conjunto | Seed | Séries | Legítimas | Falsos positivos | FPR | Artificiais | Sinalizadas | Detecção artificial | Legítimas inconclusivas | Artificiais inconclusivas |",
-    "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+    "| Conjunto | Seed | Falsos positivos / legítimas | FPR | Detectadas / artificiais | Detecção |",
+    "|---|---:|---:|---:|---:|---:|",
     ...rows,
     "",
     `**FPR no holdout:** ${evaluation.falsePositives}/${evaluation.legitimate} = ${percent(evaluation.falsePositiveRate)}. **Detecção artificial:** ${evaluation.truePositives}/${evaluation.artificial} = ${percent(evaluation.artificialDetectionRate)}. Inconclusivos não contam como falso positivo nem como detecção.`,
-    `**Casos de origem ambígua:** ${evaluation.ambiguousCases.abstained}/${evaluation.ambiguousCases.total} receberam a abstenção esperada; eles não entram no denominador da FPR por não terem rótulo único de origem.`,
     "",
-    "**Holdout por família** (falsos positivos em legítimas; artificiais não detectados; inconclusivos):",
+    "| Conjunto | Legítimas inconclusivas | Artificiais inconclusivas | Abstenções esperadas em casos ambíguos |",
+    "|---|---:|---:|---:|",
+    ...abstentionRows,
     "",
-    "| Família | Séries | Falsos positivos | Artificiais não detectados | Inconclusivos |",
-    "|---|---:|---:|---:|---:|",
+    "Casos de origem ambígua ficam fora das taxas binárias por não terem rótulo único de origem. Artificiais não detectados incluem os inconclusivos e os classificados sem sinais suspeitos.",
+    "",
+    "**Holdout por família** — a FPR de um grupo pode ser muito maior que a taxa geral:",
+    "",
+    "| Família | Origem sintética | Séries | Suspeitas | Inconclusivas | FPR do grupo | Detecção do grupo |",
+    "|---|---|---:|---:|---:|---:|---:|",
     ...familyRows,
     "",
     `Exemplos de falsos positivos: ${falsePositiveExamples}. Exemplos de artificiais não detectados: ${missedExamples}. Os detalhes completos estão em \`reports/evaluation.json\`.`,

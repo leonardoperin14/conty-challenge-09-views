@@ -195,6 +195,49 @@ function generateCamouflagedGrowth(length: number, random: Random): number[] {
   });
 }
 
+// Stress scenarios intentionally include durations, noise and periods outside
+// the original easy examples. This module never imports classifier thresholds.
+function generateStressBlock(random: Random, kind: "long" | "short" | "noisy" | "boundary" | "authorized"): number[] {
+  const duration = kind === "short" ? random.integer(4, 7)
+    : kind === "noisy" ? random.integer(10, 72)
+      : kind === "boundary" ? random.integer(8, 120)
+        : random.pick([25, 48, 96, 168, 360, 672]);
+  const before = kind === "boundary" && random.next() < 0.5 ? 0 : random.integer(8, 24);
+  const after = kind === "boundary" && before > 0 ? 0 : random.integer(8, 24);
+  const mean = random.pick([200, 1_000, 10_000, 100_000]);
+  const noise = kind === "noisy" ? 0.021 + random.next() * 0.099
+    : kind === "authorized" ? 0.005 + random.next() * 0.075 : 0.005;
+  return Array.from({ length: before + duration + after }, (_, hour) => {
+    const inBlock = hour >= before && hour < before + duration;
+    return roundedCount(inBlock ? mean * Math.exp(random.normal() * noise) : mean * (0.01 + random.next() * 0.04));
+  });
+}
+
+function generateStressPulses(random: Random, outsideRange: boolean): number[] {
+  const period = outsideRange ? random.integer(13, 24) : random.integer(2, 12);
+  const cycles = random.integer(3, 6);
+  const base = random.integer(10, 70);
+  const peak = base * random.integer(30, 300);
+  const phase = random.integer(0, period - 1);
+  const jitter = outsideRange ? 0.005 : 0.04 + random.next() * 0.14;
+  return Array.from({ length: period * cycles + 24 }, (_, hour) => {
+    if (hour >= 12 && hour < 12 + period * cycles && (hour - 12) % period === phase) {
+      return roundedCount(peak * Math.exp(random.normal() * jitter));
+    }
+    return roundedCount(base * (0.8 + random.next() * 0.4));
+  });
+}
+
+function generateDailySeasonality(random: Random): number[] {
+  const length = random.pick([72, 168, 720]);
+  const scale = random.pick(BASE_SCALES);
+  const phase = random.integer(0, 23);
+  return Array.from({ length }, (_, hour) => {
+    const distance = Math.min((hour + phase) % 24, 24 - (hour + phase) % 24);
+    return roundedCount(scale * (0.1 + 12 * Math.exp(-0.5 * (distance / 2.5) ** 2)) * Math.exp(random.normal() * 0.15));
+  });
+}
+
 export function generateDataset(seed: number): Dataset {
   const random = new Random(seed);
   const examples: SyntheticExample[] = [];
@@ -238,6 +281,24 @@ export function generateDataset(seed: number): Dataset {
     }
   }
 
+  const stressFamilies: { family: string; label: SyntheticLabel; generate: () => number[] }[] = [
+    { family: "campanha_longa_autorizada", label: "legitimate", generate: () => generateStressBlock(random, "authorized") },
+    // Same observable spike distribution, different known synthetic origin.
+    { family: "pico_organico_curto", label: "legitimate", generate: () => generateIsolatedSpike(random.pick([24, 72, 168, 720]), random) },
+    { family: "sazonalidade_diaria", label: "legitimate", generate: () => generateDailySeasonality(random) },
+    { family: "bloco_longo", label: "artificial", generate: () => generateStressBlock(random, "long") },
+    { family: "bloco_curto", label: "artificial", generate: () => generateStressBlock(random, "short") },
+    { family: "bloco_ruidoso", label: "artificial", generate: () => generateStressBlock(random, "noisy") },
+    { family: "bloco_sem_contexto", label: "artificial", generate: () => generateStressBlock(random, "boundary") },
+    { family: "pulsos_fora_faixa", label: "artificial", generate: () => generateStressPulses(random, true) },
+    { family: "pulsos_ruidosos", label: "artificial", generate: () => generateStressPulses(random, false) },
+  ];
+  for (const { family, label, generate } of stressFamilies) {
+    for (let index = 0; index < 100; index += 1) {
+      examples.push({ id: `${label}-${family}-${String(index + 1).padStart(3, "0")}`, label, family, views: generate() });
+    }
+  }
+
   const ambiguousBurst = Array.from({ length: 72 }, (_, hour) => {
     if (hour === 35) return 12_000;
     return 45 + (hour % 5) * 3;
@@ -252,6 +313,21 @@ export function generateDataset(seed: number): Dataset {
       possibleOrigins: ["viralizacao_organica", "compra_de_views"],
       expectedClassification: "inconclusivo",
       views: ambiguousBurst,
+    }, {
+      id: "origem_ambigua_pico_em_720_horas",
+      possibleOrigins: ["viralizacao_organica", "compra_de_views"],
+      expectedClassification: "inconclusivo",
+      views: [...ambiguousBurst, ...Array<number>(648).fill(54)],
+    }, {
+      id: "bloco_longo_sem_termino_observado",
+      possibleOrigins: ["campanha_autorizada", "compra_de_views"],
+      expectedClassification: "inconclusivo",
+      views: [...Array<number>(24).fill(20), ...Array<number>(30).fill(10_000)],
+    }, {
+      id: "bloco_com_variacao_limitrofe",
+      possibleOrigins: ["campanha_autorizada", "compra_de_views"],
+      expectedClassification: "inconclusivo",
+      views: [...Array<number>(24).fill(20), ...Array.from({ length: 10 }, (_, index) => index % 2 === 0 ? 9_790 : 10_210), ...Array<number>(38).fill(20)],
     }],
   };
 }

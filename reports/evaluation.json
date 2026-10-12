@@ -1,20 +1,22 @@
 {
-  "ruleVersion": "1.0.0",
+  "ruleVersion": "1.1.0",
   "datasets": [
     {
       "seed": 20260901,
-      "examples": 1500,
-      "legitimate": 1000,
-      "artificial": 500,
-      "falsePositives": 9,
-      "falsePositiveRate": 0.009,
-      "truePositives": 350,
-      "artificialDetectionRate": 0.7,
-      "legitimateInconclusive": 0,
-      "artificialInconclusive": 96,
+      "examples": 2400,
+      "legitimate": 1300,
+      "artificial": 1100,
+      "falsePositives": 33,
+      "falsePositiveRate": 0.025384615384615384,
+      "truePositives": 474,
+      "artificialDetectionRate": 0.4309090909090909,
+      "legitimateInconclusive": 155,
+      "artificialInconclusive": 505,
       "families": {
         "crescimento_gradual": {
           "examples": 200,
+          "legitimate": 200,
+          "artificial": 0,
           "suspicious": 0,
           "inconclusive": 0,
           "noSuspiciousSignals": 200,
@@ -23,6 +25,8 @@
         },
         "viralizacao_explosiva": {
           "examples": 200,
+          "legitimate": 200,
+          "artificial": 0,
           "suspicious": 0,
           "inconclusive": 0,
           "noSuspiciousSignals": 200,
@@ -31,6 +35,8 @@
         },
         "ondas_organicas": {
           "examples": 200,
+          "legitimate": 200,
+          "artificial": 0,
           "suspicious": 0,
           "inconclusive": 0,
           "noSuspiciousSignals": 200,
@@ -39,6 +45,8 @@
         },
         "divulgacao_externa": {
           "examples": 167,
+          "legitimate": 167,
+          "artificial": 0,
           "suspicious": 0,
           "inconclusive": 0,
           "noSuspiciousSignals": 167,
@@ -47,14 +55,18 @@
         },
         "campanha_autorizada_regular": {
           "examples": 33,
+          "legitimate": 33,
+          "artificial": 0,
           "suspicious": 9,
-          "inconclusive": 0,
-          "noSuspiciousSignals": 24,
+          "inconclusive": 18,
+          "noSuspiciousSignals": 6,
           "falsePositives": 9,
           "missedArtificial": 0
         },
         "baixo_volume_irregular": {
           "examples": 200,
+          "legitimate": 200,
+          "artificial": 0,
           "suspicious": 0,
           "inconclusive": 0,
           "noSuspiciousSignals": 200,
@@ -63,6 +75,8 @@
         },
         "bloco_mecanico": {
           "examples": 200,
+          "legitimate": 0,
+          "artificial": 200,
           "suspicious": 200,
           "inconclusive": 0,
           "noSuspiciousSignals": 0,
@@ -71,6 +85,8 @@
         },
         "pulsos_repetidos": {
           "examples": 150,
+          "legitimate": 0,
+          "artificial": 150,
           "suspicious": 150,
           "inconclusive": 0,
           "noSuspiciousSignals": 0,
@@ -79,24 +95,118 @@
         },
         "pico_isolado": {
           "examples": 100,
+          "legitimate": 0,
+          "artificial": 100,
           "suspicious": 0,
-          "inconclusive": 96,
-          "noSuspiciousSignals": 4,
+          "inconclusive": 100,
+          "noSuspiciousSignals": 0,
           "falsePositives": 0,
           "missedArtificial": 100
         },
         "crescimento_disfarcado": {
           "examples": 50,
+          "legitimate": 0,
+          "artificial": 50,
           "suspicious": 0,
           "inconclusive": 0,
           "noSuspiciousSignals": 50,
           "falsePositives": 0,
           "missedArtificial": 50
+        },
+        "campanha_longa_autorizada": {
+          "examples": 100,
+          "legitimate": 100,
+          "artificial": 0,
+          "suspicious": 24,
+          "inconclusive": 37,
+          "noSuspiciousSignals": 39,
+          "falsePositives": 24,
+          "missedArtificial": 0
+        },
+        "pico_organico_curto": {
+          "examples": 100,
+          "legitimate": 100,
+          "artificial": 0,
+          "suspicious": 0,
+          "inconclusive": 100,
+          "noSuspiciousSignals": 0,
+          "falsePositives": 0,
+          "missedArtificial": 0
+        },
+        "sazonalidade_diaria": {
+          "examples": 100,
+          "legitimate": 100,
+          "artificial": 0,
+          "suspicious": 0,
+          "inconclusive": 0,
+          "noSuspiciousSignals": 100,
+          "falsePositives": 0,
+          "missedArtificial": 0
+        },
+        "bloco_longo": {
+          "examples": 100,
+          "legitimate": 0,
+          "artificial": 100,
+          "suspicious": 100,
+          "inconclusive": 0,
+          "noSuspiciousSignals": 0,
+          "falsePositives": 0,
+          "missedArtificial": 0
+        },
+        "bloco_curto": {
+          "examples": 100,
+          "legitimate": 0,
+          "artificial": 100,
+          "suspicious": 0,
+          "inconclusive": 100,
+          "noSuspiciousSignals": 0,
+          "falsePositives": 0,
+          "missedArtificial": 100
+        },
+        "bloco_ruidoso": {
+          "examples": 100,
+          "legitimate": 0,
+          "artificial": 100,
+          "suspicious": 0,
+          "inconclusive": 34,
+          "noSuspiciousSignals": 66,
+          "falsePositives": 0,
+          "missedArtificial": 100
+        },
+        "bloco_sem_contexto": {
+          "examples": 100,
+          "legitimate": 0,
+          "artificial": 100,
+          "suspicious": 0,
+          "inconclusive": 100,
+          "noSuspiciousSignals": 0,
+          "falsePositives": 0,
+          "missedArtificial": 100
+        },
+        "pulsos_fora_faixa": {
+          "examples": 100,
+          "legitimate": 0,
+          "artificial": 100,
+          "suspicious": 0,
+          "inconclusive": 100,
+          "noSuspiciousSignals": 0,
+          "falsePositives": 0,
+          "missedArtificial": 100
+        },
+        "pulsos_ruidosos": {
+          "examples": 100,
+          "legitimate": 0,
+          "artificial": 100,
+          "suspicious": 24,
+          "inconclusive": 71,
+          "noSuspiciousSignals": 5,
+          "falsePositives": 0,
+          "missedArtificial": 76
         }
       },
       "ambiguousCases": {
-        "total": 1,
-        "abstained": 1
+        "total": 4,
+        "abstained": 4
       },
       "errorExamples": {
         "falsePositives": [
@@ -147,18 +257,20 @@
     },
     {
       "seed": 20261009,
-      "examples": 1500,
-      "legitimate": 1000,
-      "artificial": 500,
-      "falsePositives": 14,
-      "falsePositiveRate": 0.014,
-      "truePositives": 350,
-      "artificialDetectionRate": 0.7,
-      "legitimateInconclusive": 0,
-      "artificialInconclusive": 96,
+      "examples": 2400,
+      "legitimate": 1300,
+      "artificial": 1100,
+      "falsePositives": 32,
+      "falsePositiveRate": 0.024615384615384615,
+      "truePositives": 476,
+      "artificialDetectionRate": 0.43272727272727274,
+      "legitimateInconclusive": 158,
+      "artificialInconclusive": 504,
       "families": {
         "crescimento_gradual": {
           "examples": 200,
+          "legitimate": 200,
+          "artificial": 0,
           "suspicious": 0,
           "inconclusive": 0,
           "noSuspiciousSignals": 200,
@@ -167,6 +279,8 @@
         },
         "viralizacao_explosiva": {
           "examples": 200,
+          "legitimate": 200,
+          "artificial": 0,
           "suspicious": 0,
           "inconclusive": 0,
           "noSuspiciousSignals": 200,
@@ -175,6 +289,8 @@
         },
         "ondas_organicas": {
           "examples": 200,
+          "legitimate": 200,
+          "artificial": 0,
           "suspicious": 0,
           "inconclusive": 0,
           "noSuspiciousSignals": 200,
@@ -183,6 +299,8 @@
         },
         "divulgacao_externa": {
           "examples": 165,
+          "legitimate": 165,
+          "artificial": 0,
           "suspicious": 0,
           "inconclusive": 0,
           "noSuspiciousSignals": 165,
@@ -191,14 +309,18 @@
         },
         "campanha_autorizada_regular": {
           "examples": 35,
+          "legitimate": 35,
+          "artificial": 0,
           "suspicious": 14,
-          "inconclusive": 0,
-          "noSuspiciousSignals": 21,
+          "inconclusive": 16,
+          "noSuspiciousSignals": 5,
           "falsePositives": 14,
           "missedArtificial": 0
         },
         "baixo_volume_irregular": {
           "examples": 200,
+          "legitimate": 200,
+          "artificial": 0,
           "suspicious": 0,
           "inconclusive": 0,
           "noSuspiciousSignals": 200,
@@ -207,6 +329,8 @@
         },
         "bloco_mecanico": {
           "examples": 200,
+          "legitimate": 0,
+          "artificial": 200,
           "suspicious": 200,
           "inconclusive": 0,
           "noSuspiciousSignals": 0,
@@ -215,6 +339,8 @@
         },
         "pulsos_repetidos": {
           "examples": 150,
+          "legitimate": 0,
+          "artificial": 150,
           "suspicious": 150,
           "inconclusive": 0,
           "noSuspiciousSignals": 0,
@@ -223,24 +349,118 @@
         },
         "pico_isolado": {
           "examples": 100,
+          "legitimate": 0,
+          "artificial": 100,
           "suspicious": 0,
-          "inconclusive": 96,
-          "noSuspiciousSignals": 4,
+          "inconclusive": 100,
+          "noSuspiciousSignals": 0,
           "falsePositives": 0,
           "missedArtificial": 100
         },
         "crescimento_disfarcado": {
           "examples": 50,
+          "legitimate": 0,
+          "artificial": 50,
           "suspicious": 0,
           "inconclusive": 0,
           "noSuspiciousSignals": 50,
           "falsePositives": 0,
           "missedArtificial": 50
+        },
+        "campanha_longa_autorizada": {
+          "examples": 100,
+          "legitimate": 100,
+          "artificial": 0,
+          "suspicious": 18,
+          "inconclusive": 42,
+          "noSuspiciousSignals": 40,
+          "falsePositives": 18,
+          "missedArtificial": 0
+        },
+        "pico_organico_curto": {
+          "examples": 100,
+          "legitimate": 100,
+          "artificial": 0,
+          "suspicious": 0,
+          "inconclusive": 100,
+          "noSuspiciousSignals": 0,
+          "falsePositives": 0,
+          "missedArtificial": 0
+        },
+        "sazonalidade_diaria": {
+          "examples": 100,
+          "legitimate": 100,
+          "artificial": 0,
+          "suspicious": 0,
+          "inconclusive": 0,
+          "noSuspiciousSignals": 100,
+          "falsePositives": 0,
+          "missedArtificial": 0
+        },
+        "bloco_longo": {
+          "examples": 100,
+          "legitimate": 0,
+          "artificial": 100,
+          "suspicious": 100,
+          "inconclusive": 0,
+          "noSuspiciousSignals": 0,
+          "falsePositives": 0,
+          "missedArtificial": 0
+        },
+        "bloco_curto": {
+          "examples": 100,
+          "legitimate": 0,
+          "artificial": 100,
+          "suspicious": 0,
+          "inconclusive": 100,
+          "noSuspiciousSignals": 0,
+          "falsePositives": 0,
+          "missedArtificial": 100
+        },
+        "bloco_ruidoso": {
+          "examples": 100,
+          "legitimate": 0,
+          "artificial": 100,
+          "suspicious": 2,
+          "inconclusive": 34,
+          "noSuspiciousSignals": 64,
+          "falsePositives": 0,
+          "missedArtificial": 98
+        },
+        "bloco_sem_contexto": {
+          "examples": 100,
+          "legitimate": 0,
+          "artificial": 100,
+          "suspicious": 0,
+          "inconclusive": 100,
+          "noSuspiciousSignals": 0,
+          "falsePositives": 0,
+          "missedArtificial": 100
+        },
+        "pulsos_fora_faixa": {
+          "examples": 100,
+          "legitimate": 0,
+          "artificial": 100,
+          "suspicious": 0,
+          "inconclusive": 100,
+          "noSuspiciousSignals": 0,
+          "falsePositives": 0,
+          "missedArtificial": 100
+        },
+        "pulsos_ruidosos": {
+          "examples": 100,
+          "legitimate": 0,
+          "artificial": 100,
+          "suspicious": 24,
+          "inconclusive": 70,
+          "noSuspiciousSignals": 6,
+          "falsePositives": 0,
+          "missedArtificial": 76
         }
       },
       "ambiguousCases": {
-        "total": 1,
-        "abstained": 1
+        "total": 4,
+        "abstained": 4
       },
       "errorExamples": {
         "falsePositives": [

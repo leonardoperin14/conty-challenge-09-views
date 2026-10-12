@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { buildApp } from "../src/app.js";
-import { classifyViews } from "../src/classifier.js";
+import { classifyViews, validateViewsInput } from "../src/classifier.js";
 
 function organicViralization(): number[] {
   const length = 72;
@@ -26,11 +26,16 @@ function repeatedPulses(): number[] {
   return [...Array(12).fill(20), ...motif, ...motif, ...motif, ...motif, ...Array(24).fill(20)];
 }
 
+function plateau(duration: number, variation = 0): number[] {
+  return [...Array<number>(24).fill(20), ...Array.from({ length: duration }, (_, index) =>
+    Math.round(10_000 * (1 + (index % 2 === 0 ? -variation : variation)))), ...Array<number>(24).fill(20)];
+}
+
 describe("classifyViews", () => {
   it("keeps a plausible organic viral curve out of the suspicious category", () => {
     const result = classifyViews(organicViralization());
     assert.equal(result.classification, "sem_sinais_suspeitos");
-    assert.match(result.reason, /não apareceram/);
+    assert.match(result.reason, /nenhuma janela satisfez/);
     assert.equal(result.recommendedAction, "nenhuma");
   });
 
@@ -50,11 +55,98 @@ describe("classifyViews", () => {
     assert.ok(result.signals.some((signal) => signal.code === "repetition.cycles"));
   });
 
+  it("distinguishes a smooth organic peak from a mechanical block at similar reach and peak height", () => {
+    const bought = [...Array<number>(24).fill(20), ...Array<number>(10).fill(20_000), ...Array<number>(38).fill(20)];
+    const organic = Array.from({ length: 72 }, (_, hour) => Math.round(20 + 19_980 * Math.exp(-0.5 * ((hour - 29) / 4) ** 2)));
+    const total = (views: number[]) => views.reduce((sum, value) => sum + value, 0);
+    assert.ok(Math.abs(total(organic) / total(bought) - 1) < 0.02);
+    assert.equal(Math.max(...organic), Math.max(...bought));
+    assert.equal(classifyViews(organic).classification, "sem_sinais_suspeitos");
+    assert.equal(classifyViews(bought).classification, "suspeito");
+  });
+
+  it("does not lose a mechanical block when its duration exceeds 24 hours", () => {
+    for (const duration of [8, 24, 25, 48, 168, 672]) {
+      const views = plateau(duration);
+      assert.equal(validateViewsInput(views), undefined);
+      const result = classifyViews(views);
+      assert.equal(result.classification, "suspeito", `duration=${duration}`);
+      assert.equal(result.signals.find((signal) => signal.code === "plateau.duration_hours")?.value, duration);
+      assert.match(result.reason, new RegExp(`horas 25 e ${24 + duration}`));
+    }
+  });
+
+  it("abstains on short elevated blocks instead of silently dismissing them", () => {
+    for (const duration of [4, 7]) {
+      const result = classifyViews(plateau(duration));
+      assert.equal(result.classification, "inconclusivo");
+      assert.match(result.reason, /menos que o mínimo de 8/);
+      assert.equal(result.signals.find((signal) => signal.code === "plateau.duration_hours")?.triggered, false);
+    }
+  });
+
+  it("uses a conservative abstention band just beyond the strict variation limit", () => {
+    assert.equal(classifyViews(plateau(10, 0.02)).classification, "suspeito");
+    for (const variation of [0.021, 0.03, 0.05]) {
+      const result = classifyViews(plateau(10, variation));
+      assert.equal(result.classification, "inconclusivo", `variation=${variation}`);
+      assert.match(result.reason, /variação.*acima do limite de 2%/);
+      assert.equal(result.signals.find((signal) => signal.code === "plateau.coefficient_of_variation")?.triggered, false);
+    }
+  });
+
+  it("explains a rejected elevated candidate with its failing measured signal", () => {
+    const result = classifyViews(plateau(10, 0.06));
+    assert.equal(result.classification, "sem_sinais_suspeitos");
+    assert.match(result.reason, /bloco elevado.*variação de 6%/);
+    assert.match(result.reason, /supera os limites/);
+    assert.equal(result.signals.find((signal) => signal.code === "plateau.coefficient_of_variation")?.triggered, false);
+  });
+
+  it("reports the measured shape error when a repeated candidate is too irregular", () => {
+    const views = [...Array<number>(24).fill(200), 1_000, 10, 1_100, 10, 900, 10, 1_000, 10, ...Array<number>(24).fill(200)];
+    const result = classifyViews(views);
+    assert.equal(result.classification, "sem_sinais_suspeitos");
+    assert.match(result.reason, /sequência repetida.*acima do limite de 2%/);
+    const signal = result.signals.find((item) => item.code === "repetition.normalized_error");
+    assert.ok(signal);
+    assert.equal(signal.triggered, false);
+    assert.ok(signal.value > 0.02);
+  });
+
+  it("requires observed context on both sides of a long elevated block", () => {
+    const complete = plateau(30);
+    const truncated = [complete.slice(24), complete.slice(0, -24), complete.slice(0, -21)];
+    for (const views of truncated) {
+      const result = classifyViews(views);
+      assert.equal(result.classification, "inconclusivo");
+      assert.match(result.reason, /contexto/);
+      assert.ok(result.signals.some((signal) => signal.code.startsWith("plateau.context_") && !signal.triggered));
+    }
+    assert.equal(classifyViews(complete).classification, "suspeito");
+  });
+
+  it("preserves local spike abstention when normal hours are appended or prepended", () => {
+    const views = [...Array<number>(35).fill(50), 12_000, ...Array<number>(36).fill(50)];
+    const original = classifyViews(views);
+    assert.equal(original.classification, "inconclusivo");
+    for (const extended of [[...views, ...Array<number>(648).fill(50)], [...Array<number>(648).fill(50), ...views]]) {
+      const result = classifyViews(extended);
+      assert.equal(result.classification, original.classification);
+      for (const code of ["peak.top_three_share", "peak_to_median.ratio"]) {
+        assert.equal(result.signals.find((signal) => signal.code === code)?.value, original.signals.find((signal) => signal.code === code)?.value);
+      }
+      const window = result.signals.find((signal) => signal.code === "peak.top_three_share")?.window;
+      assert.ok(window);
+      assert.equal(window.endHour - window.startHour + 1, 24);
+    }
+  });
+
   it("abstains on an isolated spike whose origin cannot be inferred", () => {
     const views = [...Array(35).fill(50), 12_000, ...Array(36).fill(55)];
     const result = classifyViews(views);
     assert.equal(result.classification, "inconclusivo");
-    assert.equal(result.recommendedAction, "obter_mais_dados");
+    assert.equal(result.recommendedAction, "revisao_humana");
     assert.match(result.reason, /viralização real/);
   });
 
@@ -82,6 +174,24 @@ describe("POST /classify", () => {
     const response = await app.inject({ method: "POST", url: "/classify", payload: { views: organicViralization() } });
     assert.equal(response.statusCode, 200);
     assert.equal(response.json().classification, "sem_sinais_suspeitos");
+  });
+
+  it("exposes the new decisions and window signals through HTTP, including 720 hours", async (context) => {
+    const app = buildApp();
+    context.after(() => app.close());
+    const cases = [
+      { views: plateau(672), expected: "suspeito", signalCode: "plateau.duration_hours" },
+      { views: plateau(10, 0.021), expected: "inconclusivo", signalCode: "plateau.coefficient_of_variation" },
+      { views: [...Array<number>(35).fill(50), 12_000, ...Array<number>(684).fill(50)], expected: "inconclusivo", signalCode: "peak.top_three_share" },
+    ];
+    for (const { views, expected, signalCode } of cases) {
+      const response = await app.inject({ method: "POST", url: "/classify", payload: { views } });
+      assert.equal(response.statusCode, 200);
+      const body = response.json();
+      assert.equal(body.classification, expected);
+      assert.deepEqual(body, classifyViews(views));
+      assert.ok(body.signals.some((signal: { code: string; window?: unknown }) => signal.code === signalCode && signal.window !== undefined));
+    }
   });
 
   it("rejects invalid values, unknown properties and an unsafe sum", async (context) => {

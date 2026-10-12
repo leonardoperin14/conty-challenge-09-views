@@ -1,4 +1,4 @@
-export const RULE_VERSION = "1.0.0";
+export const RULE_VERSION = "1.1.0";
 export const MIN_HOURS_FOR_CLASSIFICATION = 24;
 export const MAX_HOURS = 720;
 
@@ -33,6 +33,8 @@ type Plateau = {
   lift: number;
   riseRatio: number;
   dropRatio: number;
+  beforeCount: number;
+  afterCount: number;
 };
 
 type RepeatedPattern = {
@@ -44,8 +46,10 @@ type RepeatedPattern = {
 };
 
 const PLATEAU_MIN_HOURS = 8;
-const PLATEAU_MAX_HOURS = 24;
 const PLATEAU_MAX_CV = 0.02;
+const PLATEAU_ABSTENTION_MAX_CV = 0.05;
+const PLATEAU_DIAGNOSTIC_MAX_CV = 0.15;
+const PLATEAU_DIAGNOSTIC_MIN_HOURS = 4;
 const PLATEAU_MIN_MEAN = 100;
 const PLATEAU_MIN_LIFT = 10;
 const PLATEAU_MIN_EDGE_RATIO = 5;
@@ -58,6 +62,7 @@ const REPEAT_MIN_AMPLITUDE = 100;
 const REPEAT_MIN_CONTRAST = 10;
 const PEAK_SHARE_THRESHOLD = 0.6;
 const PEAK_MEDIAN_RATIO_THRESHOLD = 10;
+const PEAK_WINDOW_HOURS = 24;
 
 function median(values: readonly number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
@@ -67,14 +72,6 @@ function median(values: readonly number[]): number {
   if (upper === undefined) return 0;
   if (sorted.length % 2 === 1 || lower === undefined) return upper;
   return (lower + upper) / 2;
-}
-
-function coefficientOfVariation(values: readonly number[]): number {
-  const mean = values.reduce((total, value) => total + value, 0) / values.length;
-  if (mean === 0) return 0;
-  const meanSquare = values.reduce((total, value) => total + value * value, 0) / values.length;
-  const variance = Math.max(0, meanSquare - mean * mean);
-  return Math.sqrt(variance) / mean;
 }
 
 function windowSignal(
@@ -101,62 +98,68 @@ function windowSignal(
 function findPlateaus(views: readonly number[]): {
   confirmed: Plateau | undefined;
   boundary: Plateau | undefined;
+  nearMiss: Plateau | undefined;
 } {
   let confirmed: Plateau | undefined;
   let boundary: Plateau | undefined;
+  let nearMiss: Plateau | undefined;
 
-  for (let duration = PLATEAU_MIN_HOURS; duration <= PLATEAU_MAX_HOURS; duration += 1) {
-    for (let start = 0; start + duration <= views.length; start += 1) {
-      const end = start + duration - 1;
-      const section = views.slice(start, end + 1);
-      const mean = section.reduce((total, value) => total + value, 0) / duration;
-      if (mean < PLATEAU_MIN_MEAN) continue;
+  // Candidate starts/ends are abrupt edges or collection boundaries. Analyze the
+  // whole episode, including long blocks, rather than chopping it into 24h slices.
+  // Welford's running variance avoids cancellation for large safe-integer counts.
+  for (let start = 0; start + PLATEAU_DIAGNOSTIC_MIN_HOURS <= views.length; start += 1) {
+    const riseRatio = start > 0 ? views[start]! / Math.max(1, views[start - 1]!) : 0;
+    if (start >= CONTEXT_HOURS && riseRatio < PLATEAU_MIN_EDGE_RATIO) continue;
+    const beforeCount = Math.min(CONTEXT_HOURS, start);
+    const beforeMedian = median(views.slice(start - beforeCount, start));
+    let mean = 0;
+    let squaredDeviations = 0;
 
-      const cv = coefficientOfVariation(section);
-      if (cv > PLATEAU_MAX_CV) continue;
-
-      const beforeCount = Math.min(CONTEXT_HOURS, start);
+    for (let end = start; end < views.length; end += 1) {
+      const duration = end - start + 1;
+      const delta = views[end]! - mean;
+      mean += delta / duration;
+      squaredDeviations += delta * (views[end]! - mean);
+      if (duration < PLATEAU_DIAGNOSTIC_MIN_HOURS || mean < PLATEAU_MIN_MEAN) continue;
       const afterCount = Math.min(CONTEXT_HOURS, views.length - end - 1);
-      const before = beforeCount > 0 ? views.slice(start - beforeCount, start) : [];
-      const after = afterCount > 0 ? views.slice(end + 1, end + 1 + afterCount) : [];
-      const beforeMedian = median(before);
-      const afterMedian = median(after);
-      const availableReferences = [beforeMedian, afterMedian].filter((value) => value > 0);
-      const baseline = Math.max(1, ...availableReferences);
-      const lift = mean / baseline;
-      const riseRatio = start > 0 ? views[start]! / Math.max(1, views[start - 1]!) : 0;
       const dropRatio = end + 1 < views.length
         ? views[end]! / Math.max(1, views[end + 1]!)
         : 0;
-
+      if (afterCount >= CONTEXT_HOURS && dropRatio < PLATEAU_MIN_EDGE_RATIO) continue;
+      const cv = Math.sqrt(Math.max(0, squaredDeviations / duration)) / mean;
+      if (cv > PLATEAU_DIAGNOSTIC_MAX_CV) continue;
+      const afterMedian = median(views.slice(end + 1, end + 1 + afterCount));
+      const lift = mean / Math.max(1, beforeMedian, afterMedian);
+      if (lift < PLATEAU_MIN_LIFT) continue;
       const enoughContext = beforeCount >= CONTEXT_HOURS && afterCount >= CONTEXT_HOURS;
-      const plateau: Plateau = { start, end, mean, coefficientOfVariation: cv, lift, riseRatio, dropRatio };
-      if (
-        enoughContext &&
-        lift >= PLATEAU_MIN_LIFT &&
-        riseRatio >= PLATEAU_MIN_EDGE_RATIO &&
-        dropRatio >= PLATEAU_MIN_EDGE_RATIO
-      ) {
-        if (confirmed === undefined || start < confirmed.start || (start === confirmed.start && duration < confirmed.end - confirmed.start + 1)) {
-          confirmed = plateau;
+      const bothEdges = riseRatio >= PLATEAU_MIN_EDGE_RATIO && dropRatio >= PLATEAU_MIN_EDGE_RATIO;
+      const plateau: Plateau = {
+        start, end, mean, coefficientOfVariation: cv, lift, riseRatio, dropRatio, beforeCount, afterCount,
+      };
+      if (enoughContext && bothEdges) {
+        if (duration >= PLATEAU_MIN_HOURS && cv <= PLATEAU_MAX_CV) {
+          confirmed ??= plateau;
+        } else if (nearMiss === undefined || cv < nearMiss.coefficientOfVariation) {
+          nearMiss = plateau;
         }
       } else if (
         !enoughContext &&
-        lift >= PLATEAU_MIN_LIFT &&
-        ((start > 0 && riseRatio >= PLATEAU_MIN_EDGE_RATIO) ||
-          (end + 1 < views.length && dropRatio >= PLATEAU_MIN_EDGE_RATIO))
+        cv <= PLATEAU_ABSTENTION_MAX_CV &&
+        (riseRatio >= PLATEAU_MIN_EDGE_RATIO || dropRatio >= PLATEAU_MIN_EDGE_RATIO)
       ) {
-        if (boundary === undefined || start < boundary.start || (start === boundary.start && duration < boundary.end - boundary.start + 1)) {
-          boundary = plateau;
-        }
+        boundary ??= plateau;
       }
     }
   }
 
-  return { confirmed, boundary };
+  return { confirmed, boundary, nearMiss };
 }
 
-function findRepeatedPattern(views: readonly number[]): RepeatedPattern | undefined {
+function findRepeatedPattern(views: readonly number[]): {
+  confirmed: RepeatedPattern | undefined;
+  nearMiss: RepeatedPattern | undefined;
+} {
+  let nearMiss: RepeatedPattern | undefined;
   for (let period = REPEAT_MIN_PERIOD; period <= REPEAT_MAX_PERIOD; period += 1) {
     const duration = period * REPEAT_CYCLES;
     for (let start = 0; start + duration <= views.length; start += 1) {
@@ -182,12 +185,44 @@ function findRepeatedPattern(views: readonly number[]): RepeatedPattern | undefi
         }
       }
       const normalizedError = Math.sqrt(squaredError / duration) / amplitude;
+      const pattern = { start, period, normalizedError, amplitude, contrast };
       if (normalizedError <= REPEAT_MAX_NORMALIZED_ERROR) {
-        return { start, period, normalizedError, amplitude, contrast };
+        return { confirmed: pattern, nearMiss };
+      }
+      if (normalizedError <= 0.1 && (nearMiss === undefined || normalizedError < nearMiss.normalizedError)) {
+        nearMiss = pattern;
       }
     }
   }
-  return undefined;
+  return { confirmed: undefined, nearMiss };
+}
+
+type PeakWindow = { start: number; end: number; peakHour: number; share: number; ratio: number };
+
+function findPeakWindow(views: readonly number[]): PeakWindow {
+  let best: PeakWindow | undefined;
+  // Center on an observed local maximum. Arbitrary sliding windows can mistake
+  // a smooth organic curve's rising shoulder for an isolated spike.
+  for (let hour = 0; hour < views.length; hour += 1) {
+    if ((hour > 0 && views[hour]! < views[hour - 1]!) ||
+      (hour + 1 < views.length && views[hour]! < views[hour + 1]!)) continue;
+    const start = Math.max(0, Math.min(hour - PEAK_WINDOW_HOURS / 2, views.length - PEAK_WINDOW_HOURS));
+    const section = views.slice(start, start + PEAK_WINDOW_HOURS);
+    const sorted = [...section].sort((a, b) => b - a);
+    const total = section.reduce((sum, count) => sum + count, 0);
+    const largest = sorted[0]!;
+    if (views[hour] !== largest) continue;
+    const share = total === 0 ? 0 : (sorted[0]! + sorted[1]! + sorted[2]!) / total;
+    const localMedian = (sorted[PEAK_WINDOW_HOURS / 2 - 1]! + sorted[PEAK_WINDOW_HOURS / 2]!) / 2;
+    const ratio = largest / Math.max(1, localMedian);
+    const candidate = { start, end: start + PEAK_WINDOW_HOURS - 1, peakHour: hour, share, ratio };
+    const qualifies = share >= PEAK_SHARE_THRESHOLD && ratio >= PEAK_MEDIAN_RATIO_THRESHOLD;
+    const bestQualifies = best !== undefined && best.share >= PEAK_SHARE_THRESHOLD && best.ratio >= PEAK_MEDIAN_RATIO_THRESHOLD;
+    if (best === undefined || (qualifies && !bestQualifies) || (qualifies === bestQualifies && share > best.share)) {
+      best = candidate;
+    }
+  }
+  return best!; // Only called after the 24-hour minimum check.
 }
 
 function formatNumber(value: number, maximumFractionDigits = 2): string {
@@ -205,11 +240,14 @@ function result(
 
 function plateauSignals(plateau: Plateau): Signal[] {
   return [
+    windowSignal("plateau.duration_hours", plateau.end - plateau.start + 1, "hours", PLATEAU_MIN_HOURS, ">=", plateau.end - plateau.start + 1 >= PLATEAU_MIN_HOURS, plateau.start, plateau.end),
     windowSignal("plateau.mean_views_per_hour", plateau.mean, "views/h", PLATEAU_MIN_MEAN, ">=", plateau.mean >= PLATEAU_MIN_MEAN, plateau.start, plateau.end),
     windowSignal("plateau.coefficient_of_variation", plateau.coefficientOfVariation, "ratio", PLATEAU_MAX_CV, "<=", plateau.coefficientOfVariation <= PLATEAU_MAX_CV, plateau.start, plateau.end),
     windowSignal("plateau.lift_over_background", plateau.lift, "ratio", PLATEAU_MIN_LIFT, ">=", plateau.lift >= PLATEAU_MIN_LIFT, plateau.start, plateau.end),
     windowSignal("plateau.rise_ratio", plateau.riseRatio, "ratio", PLATEAU_MIN_EDGE_RATIO, ">=", plateau.riseRatio >= PLATEAU_MIN_EDGE_RATIO, plateau.start, plateau.end),
     windowSignal("plateau.drop_ratio", plateau.dropRatio, "ratio", PLATEAU_MIN_EDGE_RATIO, ">=", plateau.dropRatio >= PLATEAU_MIN_EDGE_RATIO, plateau.start, plateau.end),
+    windowSignal("plateau.context_before_hours", plateau.beforeCount, "hours", CONTEXT_HOURS, ">=", plateau.beforeCount >= CONTEXT_HOURS, plateau.start, plateau.end),
+    windowSignal("plateau.context_after_hours", plateau.afterCount, "hours", CONTEXT_HOURS, ">=", plateau.afterCount >= CONTEXT_HOURS, plateau.start, plateau.end),
   ];
 }
 
@@ -245,52 +283,73 @@ export function classifyViews(views: readonly number[]): ClassificationResult {
     );
   }
 
-  const repeated = findRepeatedPattern(views);
+  const repetition = findRepeatedPattern(views);
+  const repeated = repetition.confirmed;
   if (repeated !== undefined) {
     const end = repeated.start + repeated.period * REPEAT_CYCLES - 1;
     return result(
       "suspeito",
-      `Entre as horas ${repeated.start + 1} e ${end + 1}, um padrão de ${repeated.period} horas se repetiu ${REPEAT_CYCLES} vezes com erro de forma de ${formatNumber(repeated.normalizedError * 100)}% e contraste de ${formatNumber(repeated.contrast)} vezes. Recomendo revisão humana.`,
+      `Entre as horas ${repeated.start + 1} e ${end + 1}, a mesma sequência de altas e baixas se repetiu ${REPEAT_CYCLES} vezes, a cada ${repeated.period} horas. A diferença entre ciclos foi de ${formatNumber(repeated.normalizedError * 100)}% da amplitude, abaixo do limite de 2%, com nível alto ${formatNumber(repeated.contrast)} vezes o baixo. Recomendo revisão humana.`,
       repeatedSignals(repeated),
       "revisao_humana",
     );
   }
 
   const total = views.reduce((sum, count) => sum + count, 0);
-  const largestHour = Math.max(...views);
-  const sortedDescending = [...views].sort((a, b) => b - a);
-  const topThreeShare = total === 0 ? 0 : sortedDescending.slice(0, 3).reduce((sum, count) => sum + count, 0) / total;
-  const peakMedianRatio = largestHour / Math.max(1, median(views));
+  const peak = findPeakWindow(views);
   const concentrationSignals: Signal[] = [
-    { code: "peak.top_three_share", value: topThreeShare, unit: "ratio", threshold: PEAK_SHARE_THRESHOLD, comparison: ">=", triggered: topThreeShare >= PEAK_SHARE_THRESHOLD },
-    { code: "peak_to_median.ratio", value: peakMedianRatio, unit: "ratio", threshold: PEAK_MEDIAN_RATIO_THRESHOLD, comparison: ">=", triggered: peakMedianRatio >= PEAK_MEDIAN_RATIO_THRESHOLD },
+    windowSignal("peak.top_three_share", peak.share, "ratio", PEAK_SHARE_THRESHOLD, ">=", peak.share >= PEAK_SHARE_THRESHOLD, peak.start, peak.end),
+    windowSignal("peak_to_median.ratio", peak.ratio, "ratio", PEAK_MEDIAN_RATIO_THRESHOLD, ">=", peak.ratio >= PEAK_MEDIAN_RATIO_THRESHOLD, peak.start, peak.end),
   ];
 
   if (plateau.boundary !== undefined) {
     const { start, end } = plateau.boundary;
     return result(
       "inconclusivo",
-      `Há um bloco quase constante e elevado entre as horas ${start + 1} e ${end + 1}, mas falta contexto em uma das bordas para confirmar como ele começou ou terminou. São necessários mais dados.`,
+      `Há um bloco elevado e regular entre as horas ${start + 1} e ${end + 1}, mas não há pelo menos quatro horas de contexto em uma das bordas para avaliar como ele começou ou terminou. Obtenha o trecho anterior ou posterior que está faltando.`,
       [...plateauSignals(plateau.boundary), ...concentrationSignals],
       "obter_mais_dados",
     );
   }
 
-  if (topThreeShare >= PEAK_SHARE_THRESHOLD && peakMedianRatio >= PEAK_MEDIAN_RATIO_THRESHOLD) {
-    const peakHour = views.indexOf(largestHour) + 1;
+  const nearMiss = plateau.nearMiss;
+  if (nearMiss !== undefined && nearMiss.coefficientOfVariation <= PLATEAU_ABSTENTION_MAX_CV) {
+    const duration = nearMiss.end - nearMiss.start + 1;
+    const limitations = [
+      ...(duration < PLATEAU_MIN_HOURS ? [`durou ${duration} horas, menos que o mínimo de ${PLATEAU_MIN_HOURS}`] : []),
+      ...(nearMiss.coefficientOfVariation > PLATEAU_MAX_CV ? [`a variação foi ${formatNumber(nearMiss.coefficientOfVariation * 100)}%, acima do limite de 2% para sinalizar`] : []),
+    ];
     return result(
       "inconclusivo",
-      `O pico da hora ${peakHour} concentra ${formatNumber(topThreeShare * 100)}% das views nas três maiores horas e é ${formatNumber(peakMedianRatio)} vezes a mediana. Um pico isolado pode ser uma viralização real; os dados não permitem concluir a origem.`,
-      [...concentrationSignals, { code: "peak.hour", value: peakHour, unit: "hour", triggered: true }],
-      "obter_mais_dados",
+      `Há um bloco elevado com início e fim abruptos entre as horas ${nearMiss.start + 1} e ${nearMiss.end + 1}, mas ${limitations.join(" e ")}. É um caso próximo dos critérios; prefiro não acusar. Verifique o contexto da divulgação e a origem do tráfego.`,
+      [...plateauSignals(nearMiss), ...concentrationSignals],
+      "revisao_humana",
+    );
+  }
+
+  if (peak.share >= PEAK_SHARE_THRESHOLD && peak.ratio >= PEAK_MEDIAN_RATIO_THRESHOLD) {
+    return result(
+      "inconclusivo",
+      `Entre as horas ${peak.start + 1} e ${peak.end + 1}, as três maiores horas somam ${formatNumber(peak.share * 100)}% das views desse intervalo. O pico da hora ${peak.peakHour + 1} é ${formatNumber(peak.ratio)} vezes a mediana local. Um pico isolado pode ser uma viralização real; verifique a origem do tráfego antes de concluir.`,
+      [...concentrationSignals, { code: "peak.hour", value: peak.peakHour + 1, unit: "hour", triggered: true }],
+      "revisao_humana",
     );
   }
 
   const range = views.length;
-  const reason = total === 0
+  let reason = total === 0
     ? `A série de ${range} horas contém somente valores zero; os padrões de pico ou repetição avaliados não aparecem.`
-    : `Em ${range} horas, não apareceram blocos elevados quase constantes, quatro ciclos mecânicos repetidos ou um pico concentrado que exija abstenção. Isso não comprova a origem das views.`;
-  return result("sem_sinais_suspeitos", reason, concentrationSignals, "nenhuma");
+    : `Em ${range} horas, nenhuma janela satisfez os critérios documentados de bloco mecânico, repetição ou pico concentrado. Isso não comprova a origem das views.`;
+  const diagnostics = [...concentrationSignals];
+  if (nearMiss !== undefined) {
+    reason += ` Há um bloco elevado entre as horas ${nearMiss.start + 1} e ${nearMiss.end + 1}, mas sua variação de ${formatNumber(nearMiss.coefficientOfVariation * 100)}% supera os limites de suspeita (2%) e abstenção (5%).`;
+    diagnostics.push(...plateauSignals(nearMiss));
+  }
+  if (repetition.nearMiss !== undefined) {
+    reason += ` A sequência repetida mais próxima dos critérios teve diferença entre ciclos de ${formatNumber(repetition.nearMiss.normalizedError * 100)}% da amplitude, acima do limite de 2%.`;
+    diagnostics.push(...repeatedSignals(repetition.nearMiss));
+  }
+  return result("sem_sinais_suspeitos", reason, diagnostics, "nenhuma");
 }
 
 export function validateViewsInput(views: unknown): string | undefined {

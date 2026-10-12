@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { classifyViews, RULE_VERSION } from "../classifier.js";
+import { RULE_VERSION } from "../classifier.js";
 import { evaluateDatasets, renderReadmeBlock } from "../evaluation.js";
 import { DEVELOPMENT_SEED, EVALUATION_SEED, generateDataset } from "../dataset/generator.js";
 import { writeDatasets } from "../dataset/files.js";
@@ -32,13 +32,4 @@ const allAbstentionsPassed = report.datasets.every((metrics) =>
 if (!allAbstentionsPassed) {
   console.error("Falha: um caso sintético de origem ambígua não recebeu a abstenção esperada.");
   process.exitCode = 1;
-}
-
-// Keep a direct guard that the generated ambiguous scenario stays in the inconclusive bucket.
-for (const dataset of datasets) {
-  for (const ambiguous of dataset.ambiguityCases) {
-    if (classifyViews(ambiguous.views).classification !== ambiguous.expectedClassification) {
-      process.exitCode = 1;
-    }
-  }
 }
