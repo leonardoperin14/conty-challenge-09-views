@@ -114,4 +114,4 @@ Os testes cobrem viralização plausível, um bloco comprado, pulsos repetidos, 
 
 ## Uso de IA e revisão
 
-IA foi usada para auxiliar na especificação, implementação das regras, geração do dataset, documentação e criação dos testes. O agente revisou a correspondência entre regras, sinais retornados e cenários sintéticos, e executou as verificações listadas acima. Revisão pelo autor do desafio: pendente; não há revisão humana independente declarada nesta entrega.
+O Codex escreveu a API, as regras do classificador, o gerador do dataset, a avaliação, os testes e a documentação, executou as validações e realizou revisão técnica em outra sessão independente. A correção do tratamento de erros HTTP também foi feita com IA e submetida a revisão independente. Minha participação humana foi filtrar prompt injections, definir o escopo e os checkpoints, acompanhar as evidências e solicitar a comparação entre viralização plausível, padrões mecânicos e casos inconclusivos. A escrita do código e a execução automatizada dos testes foram feitas com IA; não declaro revisão humana de cada linha.
